@@ -8,9 +8,8 @@
 - name: Install Elasticsearch
   yum: name=elasticsearch state=present
 
-#- name: Install Config
-#  copy: src=00-input.conf dest=/etc/logstash/conf.d/00-input.conf
-#  notify: restart logstash
+- name: Install Config Template
+  template: src=elasticsearch.yml.j2 dest=/etc/elasticsearch/elasticsearch.yml
 
 - name: Start Elasticsearch
   service: name=elasticsearch state=started  
@@ -18,15 +17,14 @@
 - name: Set to autostart
   shell: chkconfig --add elasticsearch
 
-#- name: Allow incoming connections
-#  iptables: chain=INPUT
-#            action=insert
-#            source=0.0.0.0/0
-#            protocol=tcp 
-#            match=tcp 
-#            state=present 
-#            ctstate=NEW 
-#            destination_port=3000
-#            jump=ACCEPT 
- 
-
+- name: Allow incoming ES cluster connections to other nodes in the cluster
+  iptables: chain=INPUT
+            action=insert
+            source={{ item }}/32
+            protocol=tcp 
+            match=tcp 
+            state=present
+            ctstate=NEW
+            destination_port=9300
+            jump=ACCEPT
+  with_items: "{{ iplist }}"
